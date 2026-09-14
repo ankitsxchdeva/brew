@@ -14,17 +14,18 @@ copy; refresh it from the spec rather than editing it here.
 ### Declared deviation: the sheet is print output, not UI
 
 The rendered sheet inside `#paper` is ink on thermal label stock, so it is
-exempt from three §1/§2 rules. Everything else on the page, the chrome around
+exempt from two §1/§2 rules. Everything else on the page, the chrome around
 it, is canonical.
 
 1. **Pure `#000` on `#fff`.** Thermal heads are 1 bit: they have no grey, and a
    tinted neutral would dither into noise. The sheet's own ink stays pure.
-2. **Its own typefaces.** The sheet is set in Futura and Avenir Next, not Lato.
-   The PNG export rasterises the SVG through an `<img>`, and a document
-   `@font-face` does not reach inside that image, so the sheet can only use
-   fonts installed on the machine.
-3. **Its own type scale.** Sheet type is sized in millimetres for reading at
+2. **Its own type scale.** Sheet type is sized in millimetres for reading at
    arm's length while brewing, so the 32px display cap does not apply to it.
+
+The sheet is set in Lato 400/700, the one family, like the chrome. Because an
+`<img>`-rasterised SVG cannot see the document's `@font-face`, the PNG export
+copies the faces from `<style id="lato">` into the SVG it rasterises. Keep that
+element as the single source of the font data.
 
 The chrome carries no exemptions: tinted neutrals, one accent, hairlines, one
 family, one clock, lowercase voice, both themes.
