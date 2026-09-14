@@ -1,8 +1,8 @@
-# brewsheet
+# brew-sheet
 
 Turns a filter coffee recipe into a 100 x 150 mm sheet for a label printer.
 
-**Running:** [ankitsxchdeva.github.io/brewsheet](https://ankitsxchdeva.github.io/brewsheet/) — no build step, no dependencies.
+**Running:** [ankitsachdeva.com/brew-sheet](https://ankitsachdeva.com/brew-sheet/) — no build step, no dependencies.
 
 Edit the recipe on the right, watch the sheet on the left, then print or export:
 
