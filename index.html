@@ -164,7 +164,7 @@
 /* ============================ theme ============================ */
 
 const root = document.documentElement;
-const TKEY = "brewsheet.theme";
+const TKEY = "brew.theme";
 try{
   const saved = localStorage.getItem(TKEY);
   if(saved === "light" || saved === "dark") root.dataset.theme = saved;
@@ -202,7 +202,7 @@ const SAMPLE = {
   ]
 };
 
-const KEY = "brewsheet.v3";
+const KEY = "brew.v3";
 let S = load();
 
 function load(){
@@ -528,7 +528,7 @@ document.getElementById("btn-reset").addEventListener("click", ()=>{
 document.getElementById("btn-print").addEventListener("click", ()=> window.print());
 
 function slug(){
-  return (String(S.name||"brew-sheet").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"") || "brew-sheet");
+  return (String(S.name||"brew").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"") || "brew");
 }
 const pngBtn = document.getElementById("btn-png");
 pngBtn.addEventListener("click", ()=>{

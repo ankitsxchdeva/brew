@@ -1,8 +1,8 @@
-# brew-sheet
+# brew
 
 Turns a filter coffee recipe into a printable sheet — sized for a 100 x 150 mm label by default, with standard paper sizes (a6, a5, a4, us letter) also on offer.
 
-**Running:** [ankitsachdeva.com/brew-sheet](https://ankitsachdeva.com/brew-sheet/) — no build step, no dependencies.
+**Running:** [ankitsachdeva.com/brew](https://ankitsachdeva.com/brew/) — no build step, no dependencies.
 
 Edit the recipe on the right, watch the sheet on the left, then print or export:
 
