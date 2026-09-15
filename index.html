@@ -11,6 +11,7 @@
   *{box-sizing:border-box}
   [hidden]{display:none !important}
   html{scrollbar-gutter:stable}
+  :root{--page-w:100mm;--page-h:150mm}
   body{
     margin:0;background:var(--bg);color:var(--fg);
     font-family:var(--font-sans);font-size:var(--text-body);line-height:var(--leading-body);
@@ -22,7 +23,7 @@
 
   /* stage: the sheet is print output, so it keeps its own ink */
   .stage{display:flex;align-items:center;justify-content:center;padding:18px;overflow:auto}
-  .paper{width:100mm;height:150mm;background:#fff;border:var(--border-w) solid var(--border)}
+  .paper{width:var(--page-w);height:var(--page-h);background:#fff;border:var(--border-w) solid var(--border)}
   .paper svg{display:block}
 
   .panel{
@@ -95,16 +96,16 @@
 
   #print-root{display:none}
   @media print{
-    @page{size:100mm 150mm;margin:0}
     html,body{background:#fff;margin:0;padding:0}
     .app{display:none !important}
     #print-root{
       display:block;position:fixed;left:0;top:0;
-      width:100mm;height:150mm;overflow:hidden;background:#fff;
+      width:var(--page-w);height:var(--page-h);overflow:hidden;background:#fff;
     }
-    #print-root svg{display:block;width:100mm;height:150mm}
+    #print-root svg{display:block;width:var(--page-w);height:var(--page-h)}
   }
 </style>
+<style id="page-setup">@page{size:100mm 150mm;margin:0}</style>
 </head>
 <body>
 <div class="app">
@@ -121,6 +122,11 @@
     </header>
 
     <div class="scroll">
+      <section>
+        <h2>sheet</h2>
+        <label class="f"><span>page size</span><select data-k="page" id="page-size"></select></label>
+      </section>
+
       <section>
         <h2>recipe</h2>
         <label class="f"><span>name</span><input data-k="name" autocomplete="off"></label>
@@ -180,6 +186,7 @@ themeBtn.addEventListener("click", ()=>{
 /* ============================ state ============================ */
 
 const SAMPLE = {
+  page:"label",
   name:"Hoffman - The Daily Driver",
   brewer:"Hario Switch",
   grind:"medium-fine",
@@ -253,8 +260,17 @@ function line(x1,y1,x2,y2,w){
 
 /* ============================ sheet ============================ */
 
-const ML = 7, MR = 93, CW = MR - ML;          // margins, content width
-const RAIL = 15.4, TX = 19.8, TIME_E = 12.6;  // timeline rail and columns
+/* page sizes: the sheet is authored at 100 mm wide; every measure scales by pk */
+const PAGES = {
+  label:  {name:"label 100 × 150 mm",      w:100,   h:150},
+  label6: {name:"label 4 × 6 in",          w:101.6, h:152.4},
+  a6:     {name:"a6 — 105 × 148 mm",       w:105,   h:148},
+  a5:     {name:"a5 — 148 × 210 mm",       w:148,   h:210},
+  a4:     {name:"a4 — 210 × 297 mm",       w:210,   h:297},
+  letter: {name:"us letter — 8.5 × 11 in", w:215.9, h:279.4}
+};
+let ML = 7, MR = 93, CW = MR - ML;          // margins, content width (set per page in renderLabel)
+let RAIL = 15.4, TX = 19.8, TIME_E = 12.6;  // timeline rail and columns
 
 function ratioOf(){
   if(S.ratio && S.ratio.trim()) return S.ratio.trim();
@@ -269,52 +285,56 @@ function marker(cy, type, k){
   if(type==="pour"){
     g.push('<circle cx="'+r(RAIL)+'" cy="'+r(cy)+'" r="'+r(1.35*k)+'" fill="#000"/>');
   }else if(type==="note"){
-    g.push('<circle cx="'+r(RAIL)+'" cy="'+r(cy)+'" r="'+r(1.2*k)+'" fill="#fff" stroke="#000" stroke-width="0.32"/>');
+    g.push('<circle cx="'+r(RAIL)+'" cy="'+r(cy)+'" r="'+r(1.2*k)+'" fill="#fff" stroke="#000" stroke-width="'+r(0.32*k)+'"/>');
   }else{
     // the switch itself: a lever with the knob down (shut) or up (open)
     const open = type==="open";
-    g.push('<rect x="'+r(RAIL-1.25*k)+'" y="'+r(cy-2.05*k)+'" width="'+r(2.5*k)+'" height="'+r(4.1*k)+'" rx="'+r(1.25*k)+'" fill="#fff" stroke="#000" stroke-width="0.32"/>');
+    g.push('<rect x="'+r(RAIL-1.25*k)+'" y="'+r(cy-2.05*k)+'" width="'+r(2.5*k)+'" height="'+r(4.1*k)+'" rx="'+r(1.25*k)+'" fill="#fff" stroke="#000" stroke-width="'+r(0.32*k)+'"/>');
     g.push('<circle cx="'+r(RAIL)+'" cy="'+r(cy + (open ? -0.95 : 0.95)*k)+'" r="'+r(0.72*k)+'" fill="#000"/>');
   }
   return g.join("");
 }
 
-function layoutSteps(steps, s, y0, extra){
-  const tS = 3.05*s, tLH = 3.5*s, dS = 2.45*s, dLH = 2.9*s, gap = 3.05*s + (extra||0);
+function layoutSteps(steps, s, y0, extra, pk){
+  const tS = 3.05*s*pk, tLH = 3.5*s*pk, dS = 2.45*s*pk, dLH = 2.9*s*pk, gap = 3.05*s*pk + (extra||0);
   const blocks = [];
   let y = y0;
   for(const st of steps){
     const hasW = String(st.w||"").trim() !== "";
-    const titleMax = MR - TX - (hasW ? 13 : 0);
+    const titleMax = MR - TX - (hasW ? 13*pk : 0);
     const tl = wrap(st.title, titleMax, tS, TEXT, 700, 0);
     const dl = st.d ? wrap(st.d, MR - TX, dS, TEXT, 400, 0) : [];
     const base = y;
     blocks.push({st, base, tl, dl, tS, tLH, dS, dLH, cy: base - tS*0.33, hasW});
-    y = base + tLH*(tl.length-1) + (dl.length ? 0.75*s + dLH*dl.length : 0) + gap;
+    y = base + tLH*(tl.length-1) + (dl.length ? 0.75*s*pk + dLH*dl.length : 0) + gap;
   }
   return {blocks, bottom: y - gap};
 }
 
 function renderLabel(px){
   const P = [];
+  const pg = PAGES[S.page] || PAGES.label;
+  const pk = pg.w/100;
+  ML = 7*pk; MR = pg.w - 7*pk; CW = MR - ML;
+  RAIL = 15.4*pk; TX = 19.8*pk; TIME_E = 12.6*pk;
   const name = String(S.name||"").trim().toUpperCase();
 
   /* --- name, the one loud thing on the sheet --- */
-  let nSize = 8.6, nLines = [];
-  for(nSize = 8.6; nSize > 4.2; nSize -= 0.1){
+  let nSize = 8.6*pk, nLines = [];
+  for(nSize = 8.6*pk; nSize > 4.2*pk; nSize -= 0.1*pk){
     nLines = wrap(name, CW, nSize, DISPLAY, 700, nSize*0.045);
     if(nLines.length <= 2) break;
   }
   const nLH = nSize*1.02;
-  let y = 12.4;
+  let y = 12.4*pk;
   nLines.forEach((ln,i)=>{
     P.push(T(ML, y + i*nLH, ln, {size:nSize, fam:DISPLAY, weight:700, track:nSize*0.045}));
   });
   y = y + (nLines.length-1)*nLH;
 
   /* --- the four numbers you check before you start --- */
-  let ry = y + 3.4;
-  P.push(line(ML, ry, MR, ry, 0.3));
+  let ry = y + 3.4*pk;
+  P.push(line(ML, ry, MR, ry, 0.3*pk));
 
   const cells = [
     [String(S.coffee||"").trim() ? S.coffee.trim()+" g" : "", "coffee"],
@@ -323,37 +343,37 @@ function renderLabel(px){
     [String(S.temp||"").trim(), "temperature"]
   ];
   const colW = CW/4;
-  const vBase = ry + 6.9;
+  const vBase = ry + 6.9*pk;
   cells.forEach((c,i)=>{
     const x = ML + i*colW;
     const v = c[0] || "N/A";
-    const sz = fitSize(v, colW-2.2, 4.7, 2.5, DISPLAY, 700, 0);
+    const sz = fitSize(v, colW-2.2*pk, 4.7*pk, 2.5*pk, DISPLAY, 700, 0);
     P.push(T(x, vBase, v, {size:sz, fam:DISPLAY, weight:700}));
-    P.push(T(x, vBase+3.0, c[1], {size:2.1, fam:TEXT, weight:400, track:0.16}));
+    P.push(T(x, vBase+3.0*pk, c[1], {size:2.1*pk, fam:TEXT, weight:400, track:0.16*pk}));
   });
 
-  const bBase = vBase + 7.1;
-  P.push(T(ML, bBase, S.brewer, {size:3.0, fam:TEXT, weight:700}));
+  const bBase = vBase + 7.1*pk;
+  P.push(T(ML, bBase, S.brewer, {size:3.0*pk, fam:TEXT, weight:700}));
   const grind = String(S.grind||"").trim();
-  if(grind) P.push(T(MR, bBase, grind + " grind", {size:3.0, fam:TEXT, weight:400, anchor:"end"}));
+  if(grind) P.push(T(MR, bBase, grind + " grind", {size:3.0*pk, fam:TEXT, weight:400, anchor:"end"}));
 
-  const ry2 = bBase + 3.2;
-  P.push(line(ML, ry2, MR, ry2, 0.55));
+  const ry2 = bBase + 3.2*pk;
+  P.push(line(ML, ry2, MR, ry2, 0.55*pk));
 
   /* --- timeline: grow to fill, shrink so it never spills --- */
   const steps = (S.steps||[]).filter(st => (st.title||st.d||st.t));
-  const floor = 143;
-  const y0 = ry2 + 6.2;
+  const floor = pg.h - 7*pk;
+  const y0 = ry2 + 6.2*pk;
 
-  let s = 0.72, L = layoutSteps(steps, s, y0, 0);
+  let s = 0.72, L = layoutSteps(steps, s, y0, 0, pk);
   for(let t = 1.55; t >= 0.72; t -= 0.02){          // biggest type that still fits
-    const c = layoutSteps(steps, t, y0, 0);
+    const c = layoutSteps(steps, t, y0, 0, pk);
     if(c.bottom <= floor){ s = t; L = c; break; }
   }
   const overflow = L.bottom > floor + 0.5;
   if(!overflow && L.blocks.length > 1){             // then let the steps breathe
-    const extra = Math.min((floor - 1 - L.bottom)/(L.blocks.length-1), 14);
-    if(extra > 0.1) L = layoutSteps(steps, s, y0, extra);
+    const extra = Math.min((floor - 1*pk - L.bottom)/(L.blocks.length-1), 14*pk);
+    if(extra > 0.1) L = layoutSteps(steps, s, y0, extra, pk);
   }
   if(!overflow){                                    // optically centre whatever air is left
     const sh = (floor - L.bottom) * 0.45;
@@ -362,32 +382,32 @@ function renderLabel(px){
 
   if(L.blocks.length){
     const first = L.blocks[0].cy, last = L.blocks[L.blocks.length-1].cy;
-    if(last > first) P.push(line(RAIL, first, RAIL, last, 0.3));
+    if(last > first) P.push(line(RAIL, first, RAIL, last, 0.3*pk));
   }
   for(const b of L.blocks){
-    const k = Math.max(0.8, Math.min(1.1, s));
+    const mk = Math.max(0.8, Math.min(1.1, s)) * pk;
     // clear the rail where a marker sits
-    const mh = ((b.st.type==="open"||b.st.type==="close") ? 5.4 : 2.9) * k;
-    P.push('<rect x="'+r(RAIL-1.5*k)+'" y="'+r(b.cy-mh/2)+'" width="'+r(3*k)+'" height="'+r(mh)+'" fill="#fff"/>');
-    P.push(marker(b.cy, b.st.type, k));
+    const mh = ((b.st.type==="open"||b.st.type==="close") ? 5.4 : 2.9) * mk;
+    P.push('<rect x="'+r(RAIL-1.5*mk)+'" y="'+r(b.cy-mh/2)+'" width="'+r(3*mk)+'" height="'+r(mh)+'" fill="#fff"/>');
+    P.push(marker(b.cy, b.st.type, mk));
     if(String(b.st.t||"").trim())
-      P.push(T(TIME_E, b.base, b.st.t.trim(), {size:2.85*s, fam:DISPLAY, weight:700, anchor:"end"}));
+      P.push(T(TIME_E, b.base, b.st.t.trim(), {size:2.85*s*pk, fam:DISPLAY, weight:700, anchor:"end"}));
     if(b.hasW)
-      P.push(T(MR, b.base, String(b.st.w).trim()+" g", {size:3.0*s, fam:DISPLAY, weight:700, anchor:"end"}));
+      P.push(T(MR, b.base, String(b.st.w).trim()+" g", {size:3.0*s*pk, fam:DISPLAY, weight:700, anchor:"end"}));
     b.tl.forEach((ln,i)=> P.push(T(TX, b.base + i*b.tLH, ln, {size:b.tS, fam:TEXT, weight:700})));
-    let dy = b.base + b.tLH*(b.tl.length-1) + 0.75*s + b.dS*0.95;
+    let dy = b.base + b.tLH*(b.tl.length-1) + 0.75*s*pk + b.dS*0.95;
     b.dl.forEach((ln,i)=> P.push(T(TX, dy + i*b.dLH, ln, {size:b.dS, fam:TEXT, weight:400})));
   }
 
   const size = px
     ? 'width="'+px.w+'" height="'+px.h+'"'
-    : 'width="100mm" height="150mm"';
+    : 'width="'+pg.w+'mm" height="'+pg.h+'mm"';
   // an <img>-rasterised SVG cannot reach the document's @font-face, so carry them in
   const faces = px ? '<defs><style>'+document.getElementById("lato").textContent+'</style></defs>' : '';
   const svg =
-    '<svg xmlns="http://www.w3.org/2000/svg" '+size+' viewBox="0 0 100 150" '+
+    '<svg xmlns="http://www.w3.org/2000/svg" '+size+' viewBox="0 0 '+pg.w+' '+pg.h+'" '+
     'shape-rendering="geometricPrecision" text-rendering="geometricPrecision">'+faces+
-    '<rect width="100" height="150" fill="#fff"/><g fill="#000">'+P.join("")+'</g></svg>';
+    '<rect width="'+pg.w+'" height="'+pg.h+'" fill="#fff"/><g fill="#000">'+P.join("")+'</g></svg>';
 
   return {svg, overflow};
 }
@@ -396,8 +416,13 @@ function renderLabel(px){
 
 const paper = document.getElementById("paper");
 const warn  = document.getElementById("warn");
+const pageSetup = document.getElementById("page-setup");
 
 function render(){
+  const pg = PAGES[S.page] || PAGES.label;
+  root.style.setProperty("--page-w", pg.w+"mm");
+  root.style.setProperty("--page-h", pg.h+"mm");
+  pageSetup.textContent = "@page{size:"+pg.w+"mm "+pg.h+"mm;margin:0}";
   const out = renderLabel(null);
   paper.innerHTML = out.svg;
   document.getElementById("print-root").innerHTML = out.svg;
@@ -406,6 +431,7 @@ function render(){
 }
 
 function fit(){
+  const pg = PAGES[S.page] || PAGES.label;
   const probe = document.createElement("div");
   probe.style.cssText = "position:absolute;visibility:hidden;width:100mm";
   document.body.appendChild(probe);
@@ -415,8 +441,8 @@ function fit(){
   const stage = paper.parentElement, PAD = 18;
   const z = Math.max(0.3, Math.min(
     1.75,
-    (stage.clientHeight - PAD*2) / (150*mm),
-    (stage.clientWidth  - PAD*2) / (100*mm)
+    (stage.clientHeight - PAD*2) / (pg.h*mm),
+    (stage.clientWidth  - PAD*2) / (pg.w*mm)
   ));
   paper.style.zoom = String(z);
 }
@@ -426,6 +452,9 @@ window.addEventListener("resize", fit);
 
 const TYPES = [["pour","pour"],["close","close the switch"],["open","open the switch"],["note","note"]];
 const stepsEl = document.getElementById("steps");
+
+document.getElementById("page-size").innerHTML = Object.keys(PAGES).map(k =>
+  '<option value="'+k+'">'+PAGES[k].name+'</option>').join("");
 
 function buildSteps(){
   stepsEl.innerHTML = (S.steps||[]).map((st,i)=>
@@ -503,7 +532,8 @@ function slug(){
 }
 const pngBtn = document.getElementById("btn-png");
 pngBtn.addEventListener("click", ()=>{
-  const W = 1181, H = 1772;                       // 100 x 150 mm at 300 dpi
+  const pg = PAGES[S.page] || PAGES.label;
+  const W = Math.round(pg.w*300/25.4), H = Math.round(pg.h*300/25.4);   // 300 dpi
   const svg = renderLabel({w:W, h:H}).svg;
   const img = new Image();
   img.onload = ()=>{
@@ -522,7 +552,7 @@ pngBtn.addEventListener("click", ()=>{
     c.toBlob(b=>{
       const a = document.createElement("a");
       a.href = URL.createObjectURL(b);
-      a.download = slug()+"-100x150.png";
+      a.download = slug()+"-"+Math.round(pg.w)+"x"+Math.round(pg.h)+".png";
       a.click();
       setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
       pngBtn.textContent = "saved";

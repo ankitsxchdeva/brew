@@ -1,13 +1,13 @@
 # brew-sheet
 
-Turns a filter coffee recipe into a 100 x 150 mm sheet for a label printer.
+Turns a filter coffee recipe into a printable sheet — sized for a 100 x 150 mm label by default, with standard paper sizes (a6, a5, a4, us letter) also on offer.
 
 **Running:** [ankitsachdeva.com/brew-sheet](https://ankitsachdeva.com/brew-sheet/) — no build step, no dependencies.
 
 Edit the recipe on the right, watch the sheet on the left, then print or export:
 
-- **print** uses `@page { size: 100mm 150mm; margin: 0 }`, so the sheet prints vector at exact size.
-- **save png** rasterises the same SVG at 300 dpi (1181 x 1772) and thresholds it to pure black and white, for printer software that wants an image.
+- **print** sets `@page { size: …; margin: 0 }` from the chosen page size, so the sheet prints vector at exact size.
+- **save png** rasterises the same SVG at 300 dpi and thresholds it to pure black and white, for printer software that wants an image.
 
 The sheet is one SVG drawn in millimetre coordinates. The timeline grows its type to fill the sheet, then spreads the steps; with a long recipe it shrinks instead, and says so when a recipe still will not fit.
 
