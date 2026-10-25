@@ -282,7 +282,7 @@ function ratioOf(){
 function marker(cy, type, k){
   const g = [];
   k = Math.max(0.8, Math.min(1.1, k||1));
-  if(type==="pour"){
+  if(type==="pour"||type==="bloom"){
     g.push('<circle cx="'+r(RAIL)+'" cy="'+r(cy)+'" r="'+r(1.35*k)+'" fill="#000"/>');
   }else if(type==="note"){
     g.push('<circle cx="'+r(RAIL)+'" cy="'+r(cy)+'" r="'+r(1.2*k)+'" fill="#fff" stroke="#000" stroke-width="'+r(0.32*k)+'"/>');
@@ -450,7 +450,7 @@ window.addEventListener("resize", fit);
 
 /* ============================ editor ============================ */
 
-const TYPES = [["pour","pour"],["close","close the switch"],["open","open the switch"],["note","note"]];
+const TYPES = [["pour","pour"],["bloom","bloom"],["close","close the switch"],["open","open the switch"],["note","note"]];
 const stepsEl = document.getElementById("steps");
 
 document.getElementById("page-size").innerHTML = Object.keys(PAGES).map(k =>
